@@ -11,7 +11,6 @@ import (
 	self_deployer "github.com/litmuschaos/litmus/litmus-portal/graphql-server/pkg/self-deployer"
 	"go.mongodb.org/mongo-driver/mongo"
 
-	"github.com/google/uuid"
 	"github.com/litmuschaos/litmus/litmus-portal/graphql-server/graph/model"
 	database "github.com/litmuschaos/litmus/litmus-portal/graphql-server/pkg/database/mongodb/operations"
 	dbSchema "github.com/litmuschaos/litmus/litmus-portal/graphql-server/pkg/database/mongodb/schema"
@@ -19,12 +18,12 @@ import (
 )
 
 //CreateUser ...
-func CreateUser(ctx context.Context, user model.CreateUserInput) (*model.User, error) {
+func CreateUser(ctx context.Context, user model.CreateUserInput, userID string, role string) (*model.User, error) {
 
 	var (
-		uuid         = uuid.New()
 		self_cluster = os.Getenv("SELF_CLUSTER")
 	)
+
 	outputUser, err := GetUser(ctx, user.Username)
 	if err != nil && err != mongo.ErrNoDocuments {
 		return nil, err
@@ -33,7 +32,7 @@ func CreateUser(ctx context.Context, user model.CreateUserInput) (*model.User, e
 	}
 
 	newUser := &dbSchema.User{
-		ID:          uuid.String(),
+		ID:          userID,
 		Username:    user.Username,
 		Email:       user.Email,
 		CompanyName: user.CompanyName,
@@ -55,7 +54,7 @@ func CreateUser(ctx context.Context, user model.CreateUserInput) (*model.User, e
 	outputUser = newUser.GetOutputUser()
 	outputUser.Projects = append(outputUser.Projects, project)
 
-	if strings.ToLower(self_cluster) == "true" && strings.ToLower(outputUser.Username) == "admin" {
+	if strings.ToLower(self_cluster) == "true" && strings.ToLower(role) == "admin" {
 		log.Print("Starting self deployer")
 		go self_deployer.StartDeployer(project.ID)
 	}
